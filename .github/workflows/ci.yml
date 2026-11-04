@@ -4,6 +4,10 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -15,5 +19,16 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Compile
-        run: mvn -B -DskipTests package
+      - name: Build and test
+        env:
+          BROADCOM_EMAIL: ${{ secrets.BROADCOM_EMAIL }}
+          BROADCOM_REGISTRY_TOKEN: ${{ secrets.BROADCOM_REGISTRY_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$BROADCOM_EMAIL" && -n "$BROADCOM_REGISTRY_TOKEN" ]]; then
+            mvn -B -s .mvn/truesource-settings.xml -Ptruesource clean verify
+          else
+            echo '::notice::Broadcom credentials are unavailable; using the default Maven repositories.'
+            mvn -B clean verify
+          fi
